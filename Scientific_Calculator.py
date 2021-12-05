@@ -8,28 +8,23 @@ class Calculator:
         self.mainScreen = Tk()
         self.mainScreen.title('Scientific Calculator')
         self.mainScreen.geometry("650x400")
+        # this frame for display expressions
         disp_frame = Frame(self.mainScreen)
         disp_frame.pack(expand=TRUE, fill=BOTH) 
-        
+        disp_frame.config(bg='#fff')
         # total expression
+        # total_expression saved expression 
         self.total_expression = ''
+        # total_exp display expression
         self.total_exp = Label(disp_frame,font='Verdana 20',anchor=E,bg='white',bd=0)
-        self.total_exp.pack(expand=TRUE,fill=BOTH)
-        
+        self.total_exp.pack(expand=TRUE,fill=BOTH,padx=5,pady=2) 
         # current expression 
-        self.current_exp = Entry(disp_frame,font='Verdana 20',text='0',justify='right',bd=0)
-        self.current_exp.pack(expand=TRUE,fill=BOTH)
+        self.current_exp = Entry(disp_frame,font='Verdana 20',text='0',justify='right',bd=0,bg='#fff')
+        self.current_exp.pack(expand=TRUE,fill=BOTH,padx=5,pady=2)
         self.current_exp.bind('<Key>',self.key_press) 
-        self.current_exp.focus_set()
+        self.current_exp.focus_set() 
 
-        # btns = [
-        #     ['round','log','sin','cos','tan'],
-        #     ['CE','C','del','mod','÷'],
-        #     ['PI',7,8,9,'×'],
-        #     ['E',4,5,6,'-'], 
-        #     ['n!',1,2,3,'+'], 
-        #     ['x^y','√',0,'.','='], 
-        # ] 
+        #  this dictionary created rows, any row incloud key=name button and value=function 
         btns = {
             1:{
                 'round':None,
@@ -39,39 +34,39 @@ class Calculator:
                 'tan':None,
             },
             2:{
-                'CE':None,
+                'CE':self.clear_entry,
                 'C':self.clear,
-                'DEL':None,
+                'DEL':self.delete,
                 'Mod':None,
-                '÷':None,
+                '÷':self.press_op,
             },
             3:{
                 'PI':self.btn_pi,
-                7:None,
-                8:None,
-                9:None,
-                '×':None,
+                7:self.press_num,
+                8:self.press_num,
+                9:self.press_num,
+                '×':self.press_op,
             },
             4:{
                 'E':self.btn_e,
-                4:None,
-                5:None,
-                6:None,
-                '-':None,
+                4:self.press_num,
+                5:self.press_num,
+                6:self.press_num,
+                '-':self.press_op,
             },
             5:{
                 'n!':None,
-                1:None,
-                2:None,
-                3:None,
-                '+':None,
+                1:self.press_num,
+                2:self.press_num,
+                3:self.press_num,
+                '+':self.press_op,
             },
             6:{
                 'x^y':None,
                 '√':None,
-                0:None,
+                0:self.press_num,
                 '.':None,
-                '=':None,
+                '=':self.press_eq,
             },
         } 
 
@@ -88,27 +83,55 @@ class Calculator:
         btn.bind('<ButtonPress-1>',event)
         self.buttons[f"btn_{txt}"] = btn
         self.buttons[f"btn_{txt}"].pack(side=LEFT, expand=TRUE, fill=BOTH)
-
+    
+    # if pressed pi or E flag=true then if you press number deleted current_expression
+    flag = False
     def btn_e(self,event):  
+        self.flag = True
         self.current_exp.delete(0,END)
         self.current_exp.insert(0,str(math.e))
 
     def btn_pi(self,event):  
+        self.flag = True
         self.current_exp.delete(0,END)
         self.current_exp.insert(0,str(math.pi))
 
-    def press_num(self,event): 
+    def btn_power(self,event):
+        if len(self.current_exp.get())>0:
+            result= math.power(int(self.current_exp.get()))
+        pass
+
+    def press_num(self,event):
+        if self.flag==True:
+            self.flag=False
+            self.current_exp.delete(0,END)
         # print(event.widget['text']) 
         exp = (self.current_exp.get() + event.widget['text'])
         self.current_exp.delete(0,END)
         self.current_exp.insert(len(self.current_exp.get()),exp)
         
     def press_op(self,event): 
-        # print(event.widget['text'])
-        # print(self.current_exp.get())
-        self.total_expression += self.current_exp.get()+event.widget['text']
-        self.total_exp.config(text=self.total_expression)
+        # total_expression + current_expression + operator
+        op = event.widget['text']
+        exp = self.total_exp.cget('text')+(self.current_exp.get() + op) 
+        self.total_exp.config(text=exp)
+        match op:
+            # change op ['×','÷'] to ['*','//']
+            # assign new value to total expression
+            case '×':self.total_expression += self.current_exp.get() + '*'
+            case '÷':self.total_expression += self.current_exp.get() + '//' 
+            case _: self.total_expression += self.current_exp.get() + op 
         self.current_exp.delete(0,END)
+        
+
+    def press_eq(self,event):
+        exp = self.total_expression + self.current_exp.get()
+        
+        self.total_exp.config(text='')
+        #
+        self.total_expression = ''
+        self.current_exp.delete(0,END)
+        self.current_exp.insert(0,eval(exp))
 
     def key_press(self,event): 
         # if keyPressed is alpha then removed then number inserted
@@ -125,12 +148,15 @@ class Calculator:
     def clear(self,event):
         self.current_exp.delete(0,END)
         self.total_exp.config(text='')
+        self.total_expression = ''
 
     def clear_entry(self,event):
         self.current_exp.delete(0,END)
 
-    def delete(self,event):
-        pass
+    def delete(self,event): 
+        exp = self.current_exp.get()
+        self.current_exp.delete(0,END)
+        self.current_exp.insert(len(exp)-1,exp[:len(exp)-1])
     
     def run(self): 
         self.mainScreen.mainloop()
