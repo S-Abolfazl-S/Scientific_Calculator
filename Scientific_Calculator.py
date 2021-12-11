@@ -8,7 +8,6 @@ class Calculator:
         self.mainScreen.title('Scientific Calculator')
         self.mainScreen.geometry("400x350")
         self.mainScreen.minsize(width=400, height=350) 
-        self.mainScreen.iconbitmap(default=None)
         # icon 
         self.mainScreen.iconphoto(False, PhotoImage(file = "icon.png"))
         # 
@@ -147,11 +146,14 @@ class Calculator:
     def press_num(self,event):
         if self.flag==True:
             self.flag=False
-            self.current_exp.delete(0,END)
-        # print(event.widget['text']) 
-        exp = (self.current_exp.get() + event.widget['text'])
+            self.current_exp.delete(0,END)  
+        exp = self.current_exp.get()
+        self.current_exp.delete(0,END) 
+        try: exp = exp[1:] if exp[0].isalpha() else exp 
+        except: pass 
+        exp = (exp + event.widget['text'])
         self.current_exp.delete(0,END)
-        self.current_exp.insert(len(self.current_exp.get()),exp)
+        self.current_exp.insert(0,exp)
         
     def press_op(self,event): 
         # total_expression + current_expression + operator
@@ -192,11 +194,12 @@ class Calculator:
         # if keyPressed is alpha then removed then number inserted
         try:
             if event.char.isalpha():  
+                # limited user for write letter
                 self.current_exp.delete(0,END)
             elif event.char.isdigit() and self.current_exp.get()[0].isalpha():
                 exp = self.current_exp.get()[1:]
-                self.current_exp.delete(0,1)
-                self.current_exp.insert(len(exp),exp[1] +event.char) 
+                self.current_exp.delete(0,END) 
+                self.current_exp.insert(0,exp[1] + event.char) 
         except:
             pass 
     
