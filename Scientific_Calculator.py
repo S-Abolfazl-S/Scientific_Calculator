@@ -1,5 +1,6 @@
 from tkinter import *
 import math
+from module.Scroll_bar import *
 
 class Calculator:
     
@@ -8,25 +9,36 @@ class Calculator:
         self.mainScreen.title('Scientific Calculator')
         self.mainScreen.geometry("400x350")
         self.mainScreen.minsize(width=400, height=350) 
-        # icon 
         self.mainScreen.iconphoto(False, PhotoImage(file = "icon.png"))
+        
+        self.main_frame = Frame(self.mainScreen)
+        self.main_frame.pack(fill=BOTH,expand=1,side=LEFT) 
+        # self.create_frame_history()
         # 
         # this frame for display expressions
-        disp_frame = Frame(self.mainScreen)
-        disp_frame.pack(expand=TRUE, fill=BOTH) 
-        disp_frame.config(bg='#fff')
+        exp_frame = Frame(self.main_frame)
+        exp_frame.pack(expand=TRUE, fill=BOTH) 
+        exp_frame.config(bg='#fff')
         # total expression
         # total_expression saved expression 
+        f_history_button = Frame(exp_frame,bg='#fff')
+        f_history_button.pack(side=TOP,fill=X)
+        self.icon = PhotoImage(file='./icon/history_icon.png') 
+        self.btn_history = Button(f_history_button,image=self.icon,text='history',relief='flat',bg='#fff',font='arial 13') 
+        self.btn_history['command']=self.toggle_frame
+        self.btn_history.pack(side=RIGHT)
+        
         self.total_expression = ''
         # total_exp display expression
-        self.total_exp = Label(disp_frame,font='Verdana 20',anchor=E,bg='white',bd=0)
+        self.total_exp = Label(exp_frame,font='Verdana 20',anchor=E,bg='white',bd=0)
         self.total_exp.pack(expand=TRUE,fill=BOTH,padx=5,pady=2) 
         # current expression 
-        self.current_exp = Entry(disp_frame,font='Verdana 20',text='0',justify='right',bd=0,bg='#fff')
+        self.current_exp = Entry(exp_frame,font='Verdana 20',text='0',justify='right',bd=0,bg='#fff')
         self.current_exp.pack(expand=TRUE,fill=BOTH,padx=5,pady=2)
         self.current_exp.bind('<Key>',self.key_press) 
         self.current_exp.focus_set() 
 
+        
         #  this dictionary created rows, any row incloud key=name button and value=function of button
         btns = { 
             1:{
@@ -76,7 +88,7 @@ class Calculator:
         # create buttons
         # for any 5 btn created 1 row inserted
         for row in btns.values():
-            btn_row = Frame(self.mainScreen)
+            btn_row = Frame(self.main_frame)
             btn_row.pack(expand=TRUE, fill=BOTH) 
             for b,f in row.items(): 
                 self.create_btn(btn=Button(btn_row),txt=str(b),event=f) 
@@ -89,8 +101,78 @@ class Calculator:
         self.buttons[f"btn_{txt}"] = btn 
         self.buttons[f"btn_{txt}"].pack(side=LEFT, expand=TRUE, fill=BOTH)
     
-    flag = False 
 
+    def create_frame_history(self):
+        self.exp_history={
+            '2^3':'2**3',
+            '2÷3':'2//3',
+            '(2+2)^2':'(2+2)**2',
+            '(2+2)^3':'(2+2)**3',
+            1:1,
+            2:2,
+            3:3,
+            4:4,
+            5:5,
+            6:6,
+            7:7,
+            8:8
+
+        }
+        self.history_buttons={}
+        self.btn_nth=0
+        # parent frame used for deleted frame_history
+        self.parent_frame = Frame(self.mainScreen,width=20)
+        self.parent_frame.pack(fill=BOTH,expand=1,side=RIGHT)
+        self.frame_history = (Scroll_bar()).create_frame(self.parent_frame)
+        self.frame_history.config(bg='#fff',width=20,highlightthickness=1,highlightbackground="#eee") 
+        self.frame_history['bg']='#fff' 
+        for key in self.exp_history.keys():
+            self.history_buttons[self.btn_nth] = Button(self.frame_history,text=key,font=('segeo',12),width=10,height=3,bg='#fff',anchor=NW,relief='groove')
+            self.history_buttons[self.btn_nth].pack(fill=X)
+            self.history_buttons[self.btn_nth].bind('<ButtonPress-1>',self.h_btn_handler)
+            self.btn_nth+=1
+
+    def add_history(self):
+        # exp:result
+        # self.total_exp:display
+        # self.total_expression
+        # self.current_exp
+
+        # create btn and text add to btn - parent: frame_history 
+        self.history_buttons[self.btn_nth] = Button(self.frame_history,text=input_txt[0],font=('segeo',12),width=10,height=5,bg='#fff',relief='groove')
+        self.history_buttons[self.btn_nth].pack(fill=X)
+        self.history_buttons[self.btn_nth].bind('<ButtonPress-1>',self.h_btn_handler)
+        self.btn_nth+=1
+        # text add to exp_history 
+        # self.exp_history[input_txt] = ''
+        pass
+
+    def h_btn_handler(self,event): 
+        # this event for click buttons in frame_history
+        self.current_exp.delete(0,END) 
+        self.current_exp.insert(0,self.exp_history[event.widget['text']]) 
+        del self.exp_history[event.widget['text']]
+        print(self.exp_history.keys())
+        event.widget.pack_forget()
+
+    toggle_frame_history = 0
+    win_width=0
+    win_height=0
+    def toggle_frame(self): 
+        if self.toggle_frame_history==1: 
+            self.toggle_frame_history=0
+            self.win_width = self.mainScreen.winfo_width()-200
+            self.win_height = self.mainScreen.winfo_height()-50
+            self.mainScreen.geometry(f'{self.win_width}x{self.win_height}') 
+            self.parent_frame.destroy()
+        else:
+            self.toggle_frame_history=1
+            self.win_width = self.mainScreen.winfo_width()+200
+            self.win_height = self.mainScreen.winfo_height()+50
+            self.mainScreen.geometry(f'{self.win_width}x{self.win_height}')
+            self.create_frame_history()
+
+    flag = False 
     # if pressed pi flag=true then if you press number deleted current_expression
     def btn_pi(self,event):  
         self.flag = True
@@ -181,7 +263,7 @@ class Calculator:
     parantes = False
     def press_eq(self,event):
         # If the current expression is null, do not run the commands
-        if not self.current_exp.get() == '' or self.total_expression:
+        if not self.current_exp.get() == '' or not self.total_expression:
             exp = self.total_expression + self.current_exp.get() + (')' if self.parantes else '')
             self.parantes = False
             self.total_exp.config(text='')
