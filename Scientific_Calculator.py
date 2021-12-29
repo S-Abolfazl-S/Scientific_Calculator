@@ -1,13 +1,13 @@
 ''' 
     Scientific Calculator
     Programmer: S-Abolfazl-S
-'''
-from decimal import Decimal
+''' 
 from tkinter import *
 import math
 from math import *
-from module.Scroll_bar import *
-
+from module.Scroll_bar import Scroll_bar
+from module.data_base import DataBase
+from datetime import datetime
 
 class Calculator:
 
@@ -16,28 +16,27 @@ class Calculator:
         self.mainScreen.title('Scientific Calculator')
         self.mainScreen.geometry("400x400")
         self.mainScreen.minsize(width=400, height=400)
-        self.mainScreen.iconphoto(False, PhotoImage(file="icon.png"))
+        self.mainScreen.iconphoto(False, PhotoImage(file=r"icon\main_icon.png"))
         self.main_frame = Frame(self.mainScreen)
         self.main_frame.pack(fill=BOTH, expand=1, side=LEFT)
-        # this frame for display expressions
-        exp_frame = Frame(self.main_frame)
-        exp_frame.pack(expand=TRUE, fill=BOTH)
-        exp_frame.config(bg='#fff')
-        # total expression
-        # total_expression saved expression
-        f_history_button = Frame(exp_frame, bg='#fff')
+        # display_frame for display total_exp and current_exp , history button
+        display_frame = Frame(self.main_frame)
+        display_frame.pack(expand=TRUE, fill=BOTH)
+        display_frame.config(bg='#fff') 
+        # connect to history database
+        self.history_db = DataBase()
+        # add button for display history
+        f_history_button = Frame(display_frame, bg='#fff')
         f_history_button.pack(side=TOP, fill=X)
-        self.icon = PhotoImage(file='./icon/history_icon.png')
+        self.icon = PhotoImage(file=r'.\icon\history_icon.png')
         self.btn_history = Button(f_history_button, image=self.icon, text='history', relief='flat', bg='#fff', font='arial 13')
         self.btn_history['command'] = self.toggle_history
-        self.btn_history.pack(side=RIGHT)
-
-         
-        # total_exp display expression
-        self.total_exp = Label(exp_frame, font='Verdana 20', anchor=E, bg='white', bd=0)
+        self.btn_history.pack(side=RIGHT) 
+        # total expression
+        self.total_exp = Label(display_frame, font='Verdana 20', anchor=E, bg='white', bd=0)
         self.total_exp.pack(expand=TRUE, fill=BOTH, padx=5, pady=2)
         # current expression
-        self.current_exp = Entry(exp_frame, font='Verdana 20', text='0', justify='right', bd=0, bg='#fff')
+        self.current_exp = Entry(display_frame, font='Verdana 20', text='0', justify='right', bd=0, bg='#fff')
         self.current_exp.pack(expand=TRUE, fill=BOTH, padx=5, pady=2)
         self.current_exp.bind('<Key>', self.key_press)
         self.current_exp.focus_set()
@@ -104,45 +103,55 @@ class Calculator:
         btn.bind('<Enter>', self.on_Enter_Mouse)
         btn.bind('<Leave>', self.on_Leave_Mouse)
         self.obj_buttons[f"btn_{txt}"] = btn
-        self.obj_buttons[f"btn_{txt}"].pack(side=LEFT, expand=TRUE, fill=BOTH)
-
-    exp_history = {}
+        self.obj_buttons[f"btn_{txt}"].pack(side=LEFT, expand=TRUE, fill=BOTH) 
 
     def create_frame_history(self):
         # parent frame used for deleted frame_history
         self.parent_history = Frame(self.mainScreen)
-        self.parent_history.pack(side=RIGHT, fill=BOTH, expand=1)
-        self.scrollbar = Scroll_bar()
-        self.frame_history = self.scrollbar.create_frame(self.parent_history)
-        self.frame_history.config(bg='#fff', width=20)
-        self.frame_history['bg'] = '#fff'
+        self.parent_history.pack(side=RIGHT, fill=BOTH, expand=1) 
+        self.frame_history = (Scroll_bar()).create_frame(self.parent_history)
+        self.frame_history.config(bg='#fff', width=20) 
+        
+        exp_list = self.history_db.get_all_exppression()
+        for item in exp_list:
+            self.add_history(item[0], item[1],item[2])
 
-        for key in self.exp_history.keys():
-            self.add_history(key, self.exp_history[key])
-
-    def add_history(self, input_exp, input_result):
-        _frame = Frame(self.frame_history, bg='#bbb', bd=0, highlightthickness=0)
-        _frame.pack(fill=X, pady=3)
-        _frame.bind('<ButtonPress-1>', self.on_click_frame_in_history)
+    def add_history(self, input_exp, input_result,dateAndTime):
+        _frame = Frame(self.frame_history, bg='#000', bd=0, highlightthickness=0)
+        _frame.pack(fill=X)
+        # add Date & Time
+        _dateTime = Text(_frame, state=NORMAL, wrap=WORD, width=0, height=0, font='verdana 15')
+        _dateTime.insert(INSERT, f'{dateAndTime}')
+        _dateTime['state'] = 'disabled'
+        _dateTime['bg'] = '#ff0'
+        _dateTime['fg'] = '#000'
+        _dateTime.pack(side=TOP, fill=BOTH, expand=1)
+        _dateTime.bind('<ButtonPress-1>', self.on_click_frame_in_history)
         # added exp
         _exp = Text(_frame, state=NORMAL, wrap=WORD, width=0, height=2, font='verdana 15')
         _exp.insert(INSERT, f'{input_exp}')
         _exp['state'] = 'disabled'
-        _exp.pack(side=TOP, fill=BOTH, expand=1, padx=10)
+        _exp.pack(side=TOP, fill=BOTH, expand=1)
         # add result
         _result = Text(_frame, state=NORMAL, wrap=WORD, width=0, height=2, font='verdana 15')
         _result.insert(INSERT, f'{input_result}')
         _result['state'] = 'disabled'
-        _result.pack(side=BOTTOM, fill=BOTH, expand=1, padx=10)
+        _result.pack(side=BOTTOM, fill=BOTH, expand=1,pady=1) 
 
     def on_click_frame_in_history(self, event):
         # if you clicked the frame this event runing and expression added to total_exp and frame deleted
         try:
+            parent = event.widget.nametowidget(event.widget.winfo_parent()) 
             self.current_exp.delete(0, END)
-            self.total_exp['text'] = event.widget.winfo_children()[0].get(0.0, END).strip()
-            del self.exp_history[event.widget.winfo_children()[0].get(0.0, END).strip()]
-            event.widget.destroy()
-            if len(self.exp_history) == 0:
+            _dateAndTime = parent.winfo_children()[0].get(0.0, END).strip()
+            _exp = parent.winfo_children()[1].get(0.0, END).strip()
+            _result = parent.winfo_children()[2].get(0.0, END).strip()
+            self.total_exp['text'] = _exp
+            self.history_db.delete_exppression(_exp,_result,_dateAndTime)
+            parent.destroy()
+            # if clicked on last exp, closed history
+            exp_list = self.history_db.get_all_exppression()
+            if len(exp_list) == 0:
                 self.toggle_history()
         except:
             pass
@@ -150,7 +159,8 @@ class Calculator:
     flag_history = 0
 
     def toggle_history(self):
-        if len(self.exp_history) > 0 or self.flag_history == 1:
+        exp_list = self.history_db.get_all_exppression()
+        if len(exp_list) > 0 or self.flag_history == 1:
             _width = self.mainScreen.winfo_width()
             _height = self.mainScreen.winfo_height()
             if self.flag_history == 1:
@@ -336,10 +346,11 @@ class Calculator:
         try:
             result = eval(exp)
             self.current_exp.insert(0, result)
-            # save in history
-            self.exp_history[input_exp] = result
+            # save in history 
+            dt_now = datetime.now().strftime(f"%Y-%m-%d %H:%M:%S")
+            self.history_db.insert_exppression(input_exp, result, dt_now)
             if self.flag_history == 1:
-                self.add_history(input_exp, result)
+                self.add_history(input_exp, result,dt_now)
         except:
             self.current_exp.insert(0, '')
         finally:
@@ -377,7 +388,7 @@ class Calculator:
 
     def run(self):
         self.mainScreen.mainloop()
+        self.history_db.close_connection()
 
-
-calc = Calculator()
-calc.run()
+if __name__=="__main__":
+    (Calculator()).run()
