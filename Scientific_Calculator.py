@@ -266,7 +266,7 @@ class Calculator:
             ')':    [')', '', -1, 0],
         }
 
-        # get values
+        # get values of action_dict
         action_list = action_dict.get(input_action)
             
         # added function to before old_function
@@ -288,17 +288,16 @@ class Calculator:
 
         # parantes control for any function ex: log() , 25root(2)...
         if self.action_mode > 0: 
+            try:
+                if total_exp[-1] == '(' or current_exp == '' and total_exp[-1] == ',':
+                    current_exp += '0' 
+            except: pass
             current_exp += ')'
             self.parantes_counter = self.parantes_counter-1 if self.parantes_counter > 0 else 0
             self.action_mode = 0 
         
-        # change operator
-        if self.old_action in ['+','-','×','÷','mod','^'] and current_exp == '' and input_action not in ['(', ')']:
-            if input_action in ['+', '-', '×', '÷', 'mod', '^'] or action_list[3] == 1:
-                    total_exp = total_exp[:len(total_exp)-len(self.old_action)]
 
-            
-        # set values
+        # get values of action_list
         if action_list != None:
             input_action = action_list[0]
             current_exp = current_exp if self.hasNumbers(current_exp) or self.hasNumbers(total_exp) else ('0' if input_action not in ['(',')'] else '')
@@ -311,46 +310,57 @@ class Calculator:
                 self.parantes_counter = 0 
                 input_action = '' if input_action == ')' else input_action 
 
+        # change operator
+        if self.old_action in ['+','-','×','÷','mod','^'] and current_exp == '' and input_action not in ['(', ')']:
+            if input_action in ['+', '-', '×', '÷', 'mod', '^'] or action_list[3] == 1:
+                    total_exp = total_exp[:len(total_exp)-len(self.old_action)]
 
-        # zero added
-        if input_action in ['+', '-', '×', '÷', 'mod', '^']:
-            if current_exp == '' and not total_exp != '': 
-                    total_exp += '0' 
-        
+        # zero and mull added
+        if not total_exp == '' or input_action in ['+', '-', '×', '÷', 'mod', '^', '(']: 
+            if current_exp == '' and not total_exp != '':
+                total_exp += '0'
+
+            if self.action_mode == 0 and input_action == '(' and not self.old_action == '(':
+                if not self.old_action in ['+', '-', '×', '÷', 'mod', '^']:
+                    current_exp += '×'
+
+
         # final result
         if self.action_mode == 2: 
             exp = total_exp + input_action + current_exp
-        else:
+        else: 
             exp = total_exp + current_exp + input_action 
         
         self.total_exp.config(text=exp)
         self.current_exp.delete(0, END)
         self.old_action = input_action
-
+        
     parantes_counter = 0
 
     def press_eq(self, event):
         current_exp = self.current_exp.get()
-
+        total_exp = self.total_exp.cget('text') + current_exp
+        # added parantes 
         if self.parantes_counter > 0:
-            for i in range(self.parantes_counter):
-                current_exp += ')'
+            if total_exp[-1] in [',','(']:
+                total_exp += '0'
+            for i in range(self.parantes_counter): 
+                total_exp += ')' 
                 self.parantes_counter -= 1
-                self.action_mode = 0
+                self.action_mode = 0 
         #
-        exp = self.total_exp.cget('text') + current_exp
-        input_exp = exp
-        exp = self.exp_converter(exp)
+        final_exp = total_exp
+        total_exp = self.exp_converter(total_exp)
         self.current_exp.delete(0, END)
         self.total_exp.config(text='')
         try:
-            result = eval(exp)
+            result = eval(total_exp)
             self.current_exp.insert(0, result)
             # save in history 
             dt_now = datetime.now().strftime(f"%Y-%m-%d %H:%M:%S")
-            self.history_db.insert_exppression(input_exp, result, dt_now)
+            self.history_db.insert_exppression(final_exp, result, dt_now)
             if self.flag_history == 1:
-                self.add_history(input_exp, result,dt_now)
+                self.add_history(final_exp, result,dt_now)
         except:
             self.current_exp.insert(0, '')
         finally:
