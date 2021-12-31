@@ -271,20 +271,20 @@ class Calculator:
             
         # added function to before old_function
         try: 
-            if old_action_mode == 2 and action_list[3] == 2:
+            if old_action_mode > 0 and action_list[3] > 0:
                 total_exp = total_exp[::-1]
-                old_action_rev = self.old_action[::-1]
+                self.old_action = self.old_action[::-1]
                 
-                index = total_exp.index(old_action_rev)+len(old_action_rev)  # len old exp
+                index = total_exp.index(self.old_action)+len(self.old_action)  # len old exp
                 current_exp = total_exp[:index]  # get old exp
                 total_exp = total_exp[index:]  # cut
 
                 total_exp = total_exp[::-1]
                 current_exp = current_exp[::-1]
+                self.old_action = self.old_action[::-1]
                 if not self.hasNumbers(current_exp):
                     current_exp+='0'
-        except:
-            pass
+        except: pass
 
         # parantes control for any function ex: log() , 25root(2)...
         if self.action_mode > 0: 
@@ -301,6 +301,9 @@ class Calculator:
         if action_list != None:
             input_action = action_list[0]
             current_exp = current_exp if self.hasNumbers(current_exp) or self.hasNumbers(total_exp) else ('0' if input_action not in ['(',')'] else '')
+            # add zero for log(0, if before is (...)= (...)×log(0,
+            if len(total_exp)>0:
+                current_exp += '0' if current_exp == '' and total_exp[-1] == ')' and input_action == 'log(' else ''
             current_exp += action_list[1]
             self.parantes_counter = self.parantes_counter + action_list[2]
             self.action_mode = action_list[3] 
@@ -315,17 +318,27 @@ class Calculator:
             if input_action in ['+', '-', '×', '÷', 'mod', '^'] or action_list[3] == 1:
                     total_exp = total_exp[:len(total_exp)-len(self.old_action)]
 
-        # zero and mull added
-        if not total_exp == '' or input_action in ['+', '-', '×', '÷', 'mod', '^', '(']: 
-            if current_exp == '' and not total_exp != '':
-                total_exp += '0'
-
-            if self.action_mode == 0 and input_action == '(' and not self.old_action == '(':
-                if not self.old_action in ['+', '-', '×', '÷', 'mod', '^']:
-                    current_exp += '×'
-
-
+        # zero and mull added 
+        operators = ['+', '-', '×', '÷', 'mod', '^', '(']
+        # add zero before operator: zero + op
+        if total_exp == '' and current_exp == '' and input_action in operators[:len(operators)-1]:
+            current_exp+='0'
+        # add zero after parantes and before operator:  ( + 0 + op
+        if len(total_exp) > 0 and current_exp == '' and total_exp[-1] == '(' and input_action in operators[:len(operators)-1]:
+            current_exp+= '0'
+        # ( + 0 + ) or (0 op 0) 
+        if len(total_exp)>0: 
+            if (total_exp[-1] in operators or total_exp[-1:-4:-1][::-1] == 'mod') and input_action == ')' and current_exp == '':
+                current_exp+='0' 
+        # add mull before parantes: (--)×( or func(--)×( or...
+        if (old_action_mode > 0 or current_exp != '' or total_exp != '') and (not self.old_action in operators or (total_exp+current_exp)[-1].isdigit()):
+            if input_action == '(':
+                current_exp += '×'
+            elif total_exp != '' and self.action_mode == 2:
+                total_exp += '×'
+            
         # final result
+        exp=''
         if self.action_mode == 2: 
             exp = total_exp + input_action + current_exp
         else: 
@@ -348,6 +361,7 @@ class Calculator:
                 total_exp += ')' 
                 self.parantes_counter -= 1
                 self.action_mode = 0 
+        print(total_exp)
         #
         final_exp = total_exp
         total_exp = self.exp_converter(total_exp)
@@ -366,7 +380,7 @@ class Calculator:
         finally:
             self.parantes_counter = 0
             self.action_mode = 0
-            self.old_action = ''
+            self.old_action = '' 
 
     def key_press(self, event):
         # if keyPressed is alpha then removed then number inserted
