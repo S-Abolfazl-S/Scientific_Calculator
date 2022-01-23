@@ -4,10 +4,14 @@
 ''' 
 from tkinter import *
 import math
-from math import *
+from math import * 
 from module.Scroll_bar import Scroll_bar
 from module.data_base import DataBase
 from datetime import datetime
+import string
+from time import sleep
+from threading import Thread
+
 
 class Calculator:
 
@@ -21,7 +25,7 @@ class Calculator:
         self.main_frame.pack(fill=BOTH, expand=1, side=LEFT)
         # display_frame for display total_exp and current_exp , history button
         display_frame = Frame(self.main_frame)
-        display_frame.pack(expand=TRUE, fill=BOTH)
+        display_frame.pack(fill=X)
         display_frame.config(bg='#fff') 
         # connect to history database
         self.history_db = DataBase()
@@ -33,77 +37,87 @@ class Calculator:
         self.btn_history['command'] = self.toggle_history
         self.btn_history.pack(side=RIGHT) 
         # total expression
-        self.total_exp = Label(display_frame, font='Verdana 20', anchor=E, bg='white', bd=0)
-        self.total_exp.pack(expand=TRUE, fill=BOTH, padx=5, pady=2)
+        self.total_exp = Label(display_frame, font='verdana 20', anchor=E, bg='white', bd=0)
+        self.total_exp.pack(expand=TRUE, fill=BOTH, padx=5, pady=5)
         # current expression
-        self.current_exp = Entry(display_frame, font='Verdana 20', text='0', justify='right', bd=0, bg='#fff')
-        self.current_exp.pack(expand=TRUE, fill=BOTH, padx=5, pady=2)
-        self.current_exp.bind('<Key>', self.key_press)
+        self.current_exp = Entry(display_frame, font='verdana 20', text='0', justify='right', bd=0, bg='#fff')
+        self.current_exp.pack(expand=TRUE, fill=BOTH, padx=5, pady=5)
+        self.current_exp.bind('<KeyRelease>', self.on_key_release)
+        self.current_exp.bind('<KeyPress>', self.on_key_press)
+        self.current_exp.bind('<Return>', self.on_press_equal)
+        self.current_exp.bind('<=>', self.on_press_equal)
         self.current_exp.focus_set()
-
-        #  this dictionary created rows, any row incloud key=name button and value=function of button
-
+        self.current_exp.insert(0,'0') 
+        # the dictionary created columns
+        # keys is number of column and value is dictionary of buttons
         collection_btns = {
-            1: {
+            0: {
                 'log': self.on_click_action,
+                '√': self.on_click_action,
+                'x^y': self.on_click_action,
+                'pi': self.btn_pi,
+                'n!': self.on_click_action,
+                '(': self.on_click_action,
+            },
+            1: {
                 'sin': self.on_click_action,
-                'cos': self.on_click_action,
-                'tan': self.on_click_action,
-                'mod': self.on_click_action,
+                'CE': self.clear_entry,
+                7: self.on_click_number,
+                4: self.on_click_number,
+                1: self.on_click_number,
+                ')': self.on_click_action,
             },
             2: {
-                '√': self.on_click_action,
-                'CE': self.clear_entry,
+                'cos': self.on_click_action,
                 'C': self.clear,
-                'Del': self.delete,
-                '÷': self.on_click_action,
+                8: self.on_click_number,
+                5: self.on_click_number,
+                2: self.on_click_number,
+                0: self.on_click_number,
             },
             3: {
-                'x^y': self.on_click_action,
-                7: self.on_click_number,
-                8: self.on_click_number,
+                'tan': self.on_click_action,
+                'Del': self.delete,
                 9: self.on_click_number,
-                '×': self.on_click_action,
+                6: self.on_click_number,
+                3: self.on_click_number,
+                '.': self.on_click_number,
             },
             4: {
-                'pi': self.btn_pi,
-                4: self.on_click_number,
-                5: self.on_click_number,
-                6: self.on_click_number,
+                'mod': self.on_click_action,
+                '÷': self.on_click_action,
+                '×': self.on_click_action,
                 '-': self.on_click_action,
-            },
-            5: {
-                'n!': self.on_click_action,
-                1: self.on_click_number,
-                2: self.on_click_number,
-                3: self.on_click_number,
                 '+': self.on_click_action,
-            },
-            6: {
-                '(': self.on_click_action,
-                ')': self.on_click_action,
-                0: self.on_click_number,
-                '.': self.on_click_number,
-                '=': self.press_eq,
-            },
+                '=': self.on_press_equal,
+            }
         }
-        # Object's of Button in this dictionary saved
+        # The buttons is stored in this dictionary example:
+        # self.obj_buttons['=']['bg'] = '#0ff'
         self.obj_buttons = {}
-        # create buttons
-        # for any 5 btn , created a row
-        for row in collection_btns.values():
-            btn_row = Frame(self.main_frame)
-            btn_row.pack(expand=TRUE, fill=BOTH)
-            for btn_name, func in row.items():
-                self.create_btn(btn=Button(btn_row), txt=str(btn_name), event=func)
 
-    def create_btn(self, btn, txt, event):
-        btn.config(text=txt, bd=0, relief='groove', width=5, bg='#fff', font=('verdana', 15))
+        # create table for manage columns 
+        self.table = {} 
+        # main:frame used for solving problem responsive of columns 
+        main = Frame(self.main_frame)
+        main.pack(fill=BOTH,expand=1) 
+        # create columns 
+        for col_index,btns in collection_btns.items():
+            self.table[col_index] = Frame(main)
+            self.table[col_index].pack(side=LEFT, expand=1, fill=BOTH)
+            # create buttons and inserted in the columns
+            for btn_name, func in btns.items(): 
+                self.create_btn(btn=Button(self.table[col_index]), txt=str(btn_name), event=func) 
+        
+    def create_btn(self, btn, txt, event): 
+        btn.config(text=txt, bd=0, relief='groove', width=5, bg='#fff', font=('verdana',15),cursor="hand2")
+        if not txt.isdigit():
+            btn['bg'] = '#ffd' 
         btn.bind('<ButtonPress-1>', event)
         btn.bind('<Enter>', self.on_Enter_Mouse)
         btn.bind('<Leave>', self.on_Leave_Mouse)
-        self.obj_buttons[f"btn_{txt}"] = btn
-        self.obj_buttons[f"btn_{txt}"].pack(side=LEFT, expand=TRUE, fill=BOTH) 
+        self.obj_buttons[txt] = btn
+        self.obj_buttons[txt].pack(fill=BOTH,expand=1) 
 
     def create_frame_history(self):
         # parent frame used for deleted frame_history
@@ -123,7 +137,7 @@ class Calculator:
         _dateTime = Text(_frame, state=NORMAL, wrap=WORD, width=0, height=0, font='verdana 15')
         _dateTime.insert(INSERT, f'{dateAndTime}')
         _dateTime['state'] = 'disabled'
-        _dateTime['bg'] = '#ff0'
+        _dateTime['bg'] = '#ffd'
         _dateTime['fg'] = '#000'
         _dateTime.pack(side=TOP, fill=BOTH, expand=1)
         _dateTime.bind('<ButtonPress-1>', self.on_click_frame_in_history)
@@ -165,22 +179,22 @@ class Calculator:
             _height = self.mainScreen.winfo_height()
             if self.flag_history == 1:
                 self.flag_history = 0
-                _width -= 200
+                _width -= 400
                 self.mainScreen.geometry(f'{_width}x{_height}')
                 self.mainScreen.minsize(width=400, height=400)
                 self.parent_history.destroy()
             else:
-                _width += 200
+                _width += 400
                 self.flag_history = 1
                 self.mainScreen.geometry(f'{_width}x{_height}')
-                self.mainScreen.minsize(width=600, height=400)
+                self.mainScreen.minsize(width=800, height=400)
                 self.create_frame_history()
 
     def hasNumbers(self, inputString):
         return any(char.isdigit() for char in inputString)
 
     num_flag = False
-    # if pressed pi flag=true then if you press number deleted current_expression
+    # if pressed pi flag=true then if you press any digits, deleted current_expression
     def btn_pi(self, event):
         self.num_flag = True
         self.current_exp.delete(0, END)
@@ -215,23 +229,40 @@ class Calculator:
             self.num_flag = False
             self.current_exp.delete(0, END)
         exp = self.current_exp.get()
+        if len(exp) == 1 and exp[0] == '0' and event.widget['text']!='0':
+            exp = ''
         self.current_exp.delete(0, END)
-        try:
+        try: 
             exp = exp[1:] if exp[0].isalpha() else exp
-        except:
-            pass
+        except: pass
         exp = (exp + event.widget['text'])
         self.current_exp.delete(0, END)
         self.current_exp.insert(0, exp)
 
-    def on_Enter_Mouse(self, event):
-        event.widget['bg'] = "#%02x%02x%02x" % (235, 235, 235)
+    def on_Enter_Mouse(self, event): 
+        self.set_color(event.widget['text'],'mouse_enter')
 
-    def on_Leave_Mouse(self, event):
-        event.widget['bg'] = "#%02x%02x%02x" % (255, 255, 255)
+    def on_Leave_Mouse(self, event): 
+        self.set_color(event.widget['text'], 'mouse_leave')
 
-    def exp_converter(self, exp: str):
-        for i in [['×', '*'], ['÷', '/'], ['^', '**'], ['root(', '**(1/'], ['mod', '%'], ['sin(', 'self._sin('], ['cos(', 'self._cos('], ['tan(', 'self._tan('], ['fact(', 'self._fact(']]:
+
+    def set_color(self, button, event_type):
+        if event_type == 'mouse_enter':
+            self.BG_COLOR = self.obj_buttons[button]['bg']
+            self.FG_COLOR = self.obj_buttons[button]['fg']
+            if button in '=+-÷×':
+                self.obj_buttons[button]['bg'] = "#15b"
+                self.obj_buttons[button]['fg'] = "#fff"
+            else:
+                self.obj_buttons[button]['bg'] = "#dfdfdf" 
+            
+        elif event_type == 'mouse_leave':
+            self.obj_buttons[button]['bg'] = self.BG_COLOR
+            self.obj_buttons[button]['fg'] = self.FG_COLOR    
+
+    _actions = []
+    def actions_converter(self, exp: str): 
+        for i in self._actions:
             if i[0] in exp:
                 exp = exp.replace(i[0], i[1])
         return exp
@@ -240,119 +271,180 @@ class Calculator:
     # 2: sin(),cos(),tan(),fact(),log() : before action is operator
     # 1: root  : before action is digit
     action_mode = 0
-    # old_action for change action
-    old_action = ''
+    prev_action_mode = 0
+    # prev_action for change action
+    prev_action = ''
 
-    def on_click_action(self, event):
-        # total_exp + current_exp + action      or      total_exp + action + current_exp
-        # action is operator / function
-        
-        # get variables
-        input_action    = event.widget['text'].strip()
-        current_exp     = self.current_exp.get().strip()
-        total_exp       = self.total_exp.cget('text').strip()
-        old_action_mode = self.action_mode  
-
-        action_dict = {
-            # action : [ action , seperator_numbers, parantes_count, action_mode],
-            'log':  ['log(', ',', 1, 2],
-            'sin':  ['sin(', '', 1, 2],
-            'cos':  ['cos(', '', 1, 2],
-            'tan':  ['tan(', '', 1, 2],
-            'n!':   ['fact(', '', 1, 2],
-            '√':    ['root(', '', 1, 1],
-            'x^y':  ['^', '', 0, 0],
-            '(':    ['(', '', 1, 0],
-            ')':    [')', '', -1, 0],
+    def on_action(self,input_action, current_exp, total_exp,event_type):
+        _action = input_action
+        _input = current_exp
+        parantes_flag = False
+        actions_dict = {
+            # action : [ action, seperator, parantes_count, action_mode, main_shape],
+            # log by module math is calculated
+            'log':  ['log(',    ',',    1,      2,      ''],
+            'sin':  ['sin(',    '',     1,      2,      'self._sin('],
+            'cos':  ['cos(',    '',     1,      2,      'self._cos('],
+            'tan':  ['tan(',    '',     1,      2,      'self._tan('],
+            'n!':   ['fact(',   '',     1,      2,      'self._fact('],
+            '√':    ['root(',   '',     1,      1,      '**(1/'],
+            'x^y':  ['^',       '',     0,      0,      '**'],
+            '^':    ['^',       '',     0,      0,      '**'],
+            '(':    ['(',       '',     1,      0,      ''],
+            ')':    [')',       '',     -1,     0,      ''],
+            '×':    ['×',       '',     0,      0,      '*'],
+            '*':    ['×',       '',     0,      0,      '*'],
+            '÷':    ['÷',       '',     0,      0,      '/'],
+            '/':    ['÷',       '',     0,      0,      '/'],
+            'mod':  ['mod',     '',     0,      0,      '%'],
+            '%':    ['mod',     '',     0,      0,      '%'],
+            '+':    ['+',       '',     0,      0,      ''],
+            '-':    ['-',       '',     0,      0,      ''],
         }
-
-        # get values of action_dict
-        action_list = action_dict.get(input_action)
-            
-        # added function to before old_function
-        try: 
-            if old_action_mode > 0 and action_list[3] > 0:
-                total_exp = total_exp[::-1]
-                self.old_action = self.old_action[::-1]
-                
-                index = total_exp.index(self.old_action)+len(self.old_action)  # len old exp
-                current_exp = total_exp[:index]  # get old exp
-                total_exp = total_exp[index:]  # cut
-
-                total_exp = total_exp[::-1]
-                current_exp = current_exp[::-1]
-                self.old_action = self.old_action[::-1]
-                if not self.hasNumbers(current_exp):
-                    current_exp+='0'
-        except: pass
-
-        # parantes control for any function ex: log() , 25root(2)...
-        if self.action_mode > 0: 
-            try:
-                if total_exp[-1] == '(' or current_exp == '' and total_exp[-1] == ',':
-                    current_exp += '0' 
-            except: pass
-            current_exp += ')'
-            self.parantes_counter = self.parantes_counter-1 if self.parantes_counter > 0 else 0
-            self.action_mode = 0 
+        # get values of actions_dict
+        action_list = actions_dict.get(input_action)
         
-
+        
         # get values of action_list
         if action_list != None:
             input_action = action_list[0]
-            current_exp = current_exp if self.hasNumbers(current_exp) or self.hasNumbers(total_exp) else ('0' if input_action not in ['(',')'] else '')
-            # add zero for log(0, if before is (...)= (...)×log(0,
-            if len(total_exp)>0:
-                current_exp += '0' if current_exp == '' and total_exp[-1] == ')' and input_action == 'log(' else ''
             current_exp += action_list[1]
             self.parantes_counter = self.parantes_counter + action_list[2]
-            self.action_mode = action_list[3] 
+            self.action_mode = action_list[3]
+            # added action to _actions:list for convert action to function or operator
+            if action_list[-1] != '' and [action_list[0], action_list[-1]] not in self._actions:
+                self._actions.append([action_list[0], action_list[-1]])
 
-            # parantes control
-            if self.parantes_counter < 0:
-                self.parantes_counter = 0 
-                input_action = '' if input_action == ')' else input_action 
+            # limited parantes
+            if self.parantes_counter < 0 and input_action == ')':
+                self.parantes_counter = 0
+                input_action = ''
+                parantes_flag = True
+
+        # added new_function to before old_function sample: old=tan(), new:sin() => sin(tan())
+        try:
+            ce, te = self.nested_functions(current_exp, total_exp, action_list[0], _input)
+            if ce != None and te != None:
+                current_exp = ce
+                total_exp = te
+        except:
+            pass
+
+        # parantes control for any function ex: log() , 25root(2)...
+        if self.prev_action_mode > 0 and self.parantes_counter > 0 and input_action != ')':
+            current_exp += ')'
+            self.prev_action_mode = 0
+            self.parantes_counter -= 1
 
         # change operator
-        if self.old_action in ['+','-','×','÷','mod','^'] and current_exp == '' and input_action not in ['(', ')']:
-            if input_action in ['+', '-', '×', '÷', 'mod', '^'] or action_list[3] == 1:
-                    total_exp = total_exp[:len(total_exp)-len(self.old_action)]
+        operators = ['+', '-', '×', '÷', 'mod', '^']
+        if self.prev_action in operators and input_action in operators and current_exp == '0' or current_exp == '':
+            total_exp = total_exp[:len(total_exp)-len(self.prev_action)] 
+            current_exp = ''
 
-        # zero and mull added 
-        operators = ['+', '-', '×', '÷', 'mod', '^', '(']
-        # add zero before operator: zero + op
-        if total_exp == '' and current_exp == '' and input_action in operators[:len(operators)-1]:
-            current_exp+='0'
-        # add zero after parantes and before operator:  ( + 0 + op
-        if len(total_exp) > 0 and current_exp == '' and total_exp[-1] == '(' and input_action in operators[:len(operators)-1]:
-            current_exp+= '0'
-        # ( + 0 + ) or (0 op 0) 
-        if len(total_exp)>0: 
-            if (total_exp[-1] in operators or total_exp[-1:-4:-1][::-1] == 'mod') and input_action == ')' and current_exp == '':
-                current_exp+='0' 
-        # add mull before parantes: (--)×( or func(--)×( or...
-        if (old_action_mode > 0 or current_exp != '' or total_exp != '') and (not self.old_action in operators or (total_exp+current_exp)[-1].isdigit()):
-            if input_action == '(':
-                current_exp += '×'
-            elif total_exp != '' and self.action_mode == 2:
-                total_exp += '×'
-            
-        # final result
-        exp=''
-        if self.action_mode == 2: 
+        
+    
+        # insert mul between parenthesis or digit and parenthes ex: ()×() , 2×()
+        current_exp, total_exp = self.insert_mul(current_exp, total_exp, input_action)
+        
+        # final result 
+        if event_type == 'key':
+            index = current_exp.index(_action)
+            current_exp = current_exp[:index]
+        
+
+        exp = ''
+        if parantes_flag:
+            exp = total_exp
+        elif input_action == ')' and (total_exp[-1] == ')' or total_exp[-1].isdigit()):
+            exp = total_exp + input_action
+        elif self.action_mode > -1 and total_exp != '' and total_exp[-1] != '(' and current_exp == '0':
+            exp = total_exp + input_action
+        elif self.action_mode == 2:
             exp = total_exp + input_action + current_exp
-        else: 
+        else:
             exp = total_exp + current_exp + input_action 
         
-        self.total_exp.config(text=exp)
-        self.current_exp.delete(0, END)
-        self.old_action = input_action
+        # This action will be saved for later edits
+        self.prev_action = input_action
+        self.prev_action_mode = self.action_mode
+        if self.action_mode == 2:
+            self.func_counter += 1
+
+        return exp
+
+
+    def on_click_action(self, event):
+        # this method for add a action to expresion
+        # action is operator or function 
+        exp = self.on_action(
+                        event.widget['text'].strip(),
+                        self.current_exp.get().strip(),
+                        self.total_exp.cget('text').strip(),'mouse') 
+                        
+        self.total_exp['text'] = exp
+        self.current_exp.delete(0, END) 
+        self.current_exp.insert(0,'0') 
         
+    func_counter = 0
+    def nested_functions(self,current_exp,total_exp,action,_input): 
+        # added function to before old_function 
+        try:
+            if self.prev_action_mode > 0 and self.action_mode == 2:
+                # fix log() seperator
+                if action == 'log(' and self.prev_action in ['sin(','cos(','tan(','fact(','log(']: 
+                    total_exp+=')' 
+                    self.parantes_counter -= 1 if self.parantes_counter-1>=0 else 0
+                    if _input == '0': 
+                        total_exp += ',10' 
+                    else:
+                        total_exp += ',' + _input
+
+                total_exp = total_exp[::-1]
+                self.prev_action = self.prev_action[::-1]
+                index = total_exp.index(self.prev_action)+len(self.prev_action)  # len old exp
+                # 
+                if self.func_counter>0:
+                    # controlled if new_func == old_func - sample:
+                    # currect: sin(tan(tan())) , incurrect: tan(sin(tan()))
+                    index += len(self.prev_action)
+                    self.func_counter -= 1 if self.func_counter-1 >= 0 else 0
+
+                # 25root() -> get 25
+                if self.prev_action_mode == 1:
+                    for i in range(index, len(total_exp)):
+                        if total_exp[i].isdigit():
+                            index += 1 
+                    
+                current_exp = total_exp[:index] # get old exp
+                total_exp = total_exp[index:]  # cut
+                total_exp = total_exp[::-1]
+                current_exp = current_exp[::-1]
+                self.prev_action = self.prev_action[::-1]        
+        except: pass
+        return current_exp, total_exp
+
+    def insert_mul(self, current_exp, total_exp, action):  
+        operators = ['+', '-', '×', '÷','mod', 'd', '^', '('] 
+        if (current_exp == '0' and action == '('):
+            current_exp = '' 
+        
+        if (not current_exp in ['', '0']) or total_exp != '' or self.prev_action_mode > 0:
+            if (not self.prev_action in operators or (total_exp+current_exp)[-1].isdigit()):
+                if action == '(' and ( not current_exp in ['','0']):
+                    current_exp += '×'
+                elif self.action_mode == 2 and len(total_exp)>0 and total_exp[-1] == ')':
+                    total_exp += '×' 
+        
+        return current_exp, total_exp 
+
     parantes_counter = 0
 
-    def press_eq(self, event):
+    def on_press_equal(self, event): 
         current_exp = self.current_exp.get()
+        current_exp = '' if current_exp == '0' else current_exp
         total_exp = self.total_exp.cget('text') + current_exp
+        
         # added parantes 
         if self.parantes_counter > 0:
             if total_exp[-1] in [',','(']:
@@ -361,55 +453,111 @@ class Calculator:
                 total_exp += ')' 
                 self.parantes_counter -= 1
                 self.action_mode = 0 
-        print(total_exp)
-        #
+        # 
         final_exp = total_exp
-        total_exp = self.exp_converter(total_exp)
+        total_exp = self.actions_converter(total_exp)
         self.current_exp.delete(0, END)
         self.total_exp.config(text='')
-        try:
-            result = eval(total_exp)
-            self.current_exp.insert(0, result)
+        try: 
+            result = eval(total_exp) 
+            self.current_exp.insert(0, result) 
             # save in history 
             dt_now = datetime.now().strftime(f"%Y-%m-%d %H:%M:%S")
             self.history_db.insert_exppression(final_exp, result, dt_now)
             if self.flag_history == 1:
                 self.add_history(final_exp, result,dt_now)
         except:
-            self.current_exp.insert(0, '')
+            self.current_exp.insert(0, '0')
         finally:
             self.parantes_counter = 0
             self.action_mode = 0
-            self.old_action = '' 
+            self.prev_action = '' 
+            self.operator_list = [] 
 
-    def key_press(self, event):
-        # if keyPressed is alpha then removed then number inserted
+    # color_buttons is history for colors of buttons
+    color_buttons = []
+    def on_key_press(self, event): 
         try:
-            if event.char.isalpha():
-                # limited user for write letter
+            # if event type is key run timer for set default color
+            btn = event.char
+            btn = 'x^y' if btn == '^' else btn 
+            self.color_buttons.append([btn, self.obj_buttons[btn]['bg'], self.obj_buttons[btn]['fg']])
+            if btn in '=+-÷×':
+                self.obj_buttons[btn]['bg'] = "#15b"
+                self.obj_buttons[btn]['fg'] = "#fff"
+            else:
+                self.obj_buttons[btn]['bg'] = "#dfdfdf"
+
+            def countDown():
+                # for _ in range(3):
+                sleep(0.2)
+                btn = self.color_buttons.pop(0)
+                self.obj_buttons[btn[0]]['bg'] = btn[1]
+                self.obj_buttons[btn[0]]['fg'] = btn[2]
+            countDown_thread = Thread(target=countDown)
+            countDown_thread.start()
+        except:
+            pass
+
+    def on_key_release(self, event):
+        # if Key Pressed and if key is alpha then removed and number inserted 
+        try: 
+            current_exp = self.current_exp.get() 
+            total_exp = self.total_exp.cget('text')
+            if event.char in '+-*/%^()':
+                exp = self.on_action(event.char,current_exp,self.total_exp.cget('text'),'key')
+                self.total_exp['text'] = exp
                 self.current_exp.delete(0, END)
-            elif event.char.isdigit() and self.current_exp.get()[0].isalpha():
-                exp = self.current_exp.get()[1:]
+                self.current_exp.insert('0', 0) 
+                self.prev_action = event.widget['text'].strip()
+                self.prev_action_mode = self.action_mode
+                if self.action_mode == 2:
+                    self.func_counter += 1   
+            elif event.char.isalpha() or (event.char not in '+-*/%^.()' and event.char in string.punctuation):
+                # limited user for write only digits or operators 
+                # by index can deleted letter one or more   ex: aaaaaaaaaaaa
+                index = current_exp.index(event.char)
+                current_exp = current_exp[:index] 
                 self.current_exp.delete(0, END)
-                self.current_exp.insert(0, exp[1] + event.char)
+                self.current_exp.insert(END, current_exp) 
+            elif event.char.isdigit() :
+                if current_exp[0] == '0' and '.' not in current_exp:
+                    self.current_exp.delete(0, END) 
+                    self.current_exp.insert(0, event.char)
+            elif event.char == '.':
+                if current_exp.count('.')>1:  
+                    index = current_exp.index('.',2) 
+                    current_exp = current_exp[:index]
+                    self.current_exp.delete(0, END)
+                    self.current_exp.insert(0, current_exp) 
+            elif current_exp == '':
+                self.current_exp.insert(0, '0') 
+            
+            
         except:
             pass
 
     def clear(self, event):
         self.current_exp.delete(0, END)
+        self.current_exp.insert(END,'0')
         self.total_exp.config(text='') 
+        # values
         self.parantes_counter = 0
         self.action_mode = 0
-        self.old_action = ''
+        self.prev_action_mode = 0
+        self.prev_action = ''
+        self._actions = []
 
     def clear_entry(self, event):
         self.current_exp.delete(0, END)
+        self.current_exp.insert(END,'0')
 
     def delete(self, event):
         exp = self.current_exp.get()
-        self.current_exp.delete(0, END)
-        self.current_exp.insert(len(exp)-1, exp[:len(exp)-1])
-
+        self.current_exp.delete(0, END) 
+        result = exp[:len(exp)-1] 
+        self.current_exp.insert(len(exp)-1, result if result != '' else '0')
+    
     def run(self):
         self.mainScreen.mainloop()
         self.history_db.close_connection()
