@@ -15,7 +15,7 @@ from threading import Thread
 
 class Calculator:
 
-    def __init__(self):
+    def __init__(self): 
         self.mainScreen = Tk()
         self.mainScreen.title('Scientific Calculator')
         self.mainScreen.geometry("400x400")
@@ -37,17 +37,16 @@ class Calculator:
         self.btn_history['command'] = self.toggle_history
         self.btn_history.pack(side=RIGHT) 
         # total expression
-        self.total_exp = Label(display_frame, font='verdana 20', anchor=E, bg='white', bd=0)
+        self.total_exp = Label(display_frame, width=15, font='verdana 20', anchor=E, bg='white', bd=0)
         self.total_exp.pack(expand=TRUE, fill=BOTH, padx=5, pady=5)
+        self.total_exp.bind('<ButtonPress-1>',self.showText)
         # current expression
-        self.current_exp = Entry(display_frame, font='verdana 20', text='0', justify='right', bd=0, bg='#fff')
-        self.current_exp.pack(expand=TRUE, fill=BOTH, padx=5, pady=5)
-        self.current_exp.bind('<KeyRelease>', self.on_key_release)
-        self.current_exp.bind('<KeyPress>', self.on_key_press)
-        self.current_exp.bind('<Return>', self.on_press_equal)
-        self.current_exp.bind('<=>', self.on_press_equal)
-        self.current_exp.focus_set()
-        self.current_exp.insert(0,'0') 
+        self.current_exp = StringVar(display_frame, value='0') 
+        self.current_exp_widget = Label(display_frame, width=15, font='verdana 20', textvariable=self.current_exp, anchor=E, bd=0, bg='#fff')
+        self.current_exp_widget.pack(expand=TRUE, fill=BOTH, padx=5, pady=5)
+        self.current_exp_widget.bind('<ButtonPress-1>',self.showText)
+        self.mainScreen.bind('<KeyRelease>', self.on_key_release)
+        self.mainScreen.bind('<KeyPress>', self.on_key_press) 
         # the dictionary created columns
         # keys is number of column and value is dictionary of buttons
         collection_btns = {
@@ -156,12 +155,12 @@ class Calculator:
         # if you clicked the frame this event runing and expression added to total_exp and frame deleted
         try:
             parent = event.widget.nametowidget(event.widget.winfo_parent()) 
-            self.current_exp.delete(0, END)
             _dateAndTime = parent.winfo_children()[0].get(0.0, END).strip()
             _exp = parent.winfo_children()[1].get(0.0, END).strip()
             _result = parent.winfo_children()[2].get(0.0, END).strip()
+            self.current_exp.set("")
             self.total_exp['text'] = _exp
-            self.history_db.delete_exppression(_exp,_result,_dateAndTime)
+            self.history_db.delete_exppression(_exp,_result,_dateAndTime) 
             parent.destroy()
             # if clicked on last exp, closed history
             exp_list = self.history_db.get_all_exppression()
@@ -190,15 +189,14 @@ class Calculator:
                 self.mainScreen.minsize(width=800, height=400)
                 self.create_frame_history()
 
-    def hasNumbers(self, inputString):
+    def hasNumber(self, inputString):
         return any(char.isdigit() for char in inputString)
 
     num_flag = False
     # if pressed pi flag=true then if you press any digits, deleted current_expression
     def btn_pi(self, event):
-        self.num_flag = True
-        self.current_exp.delete(0, END)
-        self.current_exp.insert(0, str(math.pi))
+        self.num_flag = True 
+        self.current_exp.set(math.pi)
 
     def _sin(self, num):
         return math.sin(math.radians(num)) if not num in [180.0, 360.0, 0.0] else 0
@@ -226,18 +224,16 @@ class Calculator:
 
     def on_click_number(self, event):
         if self.num_flag == True:
-            self.num_flag = False
-            self.current_exp.delete(0, END)
+            self.num_flag = False  
+            self.current_exp.set('')
         exp = self.current_exp.get()
         if len(exp) == 1 and exp[0] == '0' and event.widget['text']!='0':
-            exp = ''
-        self.current_exp.delete(0, END)
+            exp = '' 
         try: 
             exp = exp[1:] if exp[0].isalpha() else exp
         except: pass
-        exp = (exp + event.widget['text'])
-        self.current_exp.delete(0, END)
-        self.current_exp.insert(0, exp)
+        exp = (exp + event.widget['text']) 
+        self.current_exp.set(exp)
 
     def on_Enter_Mouse(self, event): 
         self.set_color(event.widget['text'],'mouse_enter')
@@ -245,6 +241,26 @@ class Calculator:
     def on_Leave_Mouse(self, event): 
         self.set_color(event.widget['text'], 'mouse_leave')
 
+    def showText(self,event): 
+        contentBox = Toplevel(self.mainScreen,width=0,height=0)
+        contentBox.geometry('400x300')
+        contentBox.title("") 
+        contentBox.iconphoto(False, PhotoImage(file=r"icon\main_icon.png"))
+        textBox = Text(contentBox,font='segeo 20',bd=0,relief=FLAT)
+        textBox.insert(END,event.widget['text'])
+        textBox.pack(fill=BOTH,expand=1) 
+        def rightClick(e):
+            def rClick_Copy(e):
+                e.widget.event_generate('<Control-c>')
+            try:
+                e.widget.focus()
+                rmenu = Menu(None, tearoff=0, takefocus=0,bg="#fff",font='segoe 14')
+                rmenu.add_command(label='Copy', command=lambda e=e: rClick_Copy(e))
+                rmenu.tk_popup(e.x_root+40, e.y_root+10,entry="0")
+            except:
+                pass
+        textBox.bind('<Button-3>',rightClick)
+        contentBox.mainloop()
 
     def set_color(self, button, event_type):
         if event_type == 'mouse_enter':
@@ -311,15 +327,16 @@ class Calculator:
             current_exp += action_list[1]
             self.parantes_counter = self.parantes_counter + action_list[2]
             self.action_mode = action_list[3]
+
             # added action to _actions:list for convert action to function or operator
             if action_list[-1] != '' and [action_list[0], action_list[-1]] not in self._actions:
-                self._actions.append([action_list[0], action_list[-1]])
+                self._actions.append([action_list[0], action_list[-1]]) 
 
             # limited parantes
             if self.parantes_counter < 0 and input_action == ')':
                 self.parantes_counter = 0
                 input_action = ''
-                parantes_flag = True
+                parantes_flag = True 
 
         # added new_function to before old_function sample: old=tan(), new:sin() => sin(tan())
         try:
@@ -338,27 +355,20 @@ class Calculator:
 
         # change operator
         operators = ['+', '-', '×', '÷', 'mod', '^']
-        if self.prev_action in operators and input_action in operators and current_exp == '0' or current_exp == '':
+        if self.prev_action in operators and input_action in operators and current_exp in ['0', '']: 
             total_exp = total_exp[:len(total_exp)-len(self.prev_action)] 
-            current_exp = ''
-
+            current_exp = '' 
         
     
         # insert mul between parenthesis or digit and parenthes ex: ()×() , 2×()
-        current_exp, total_exp = self.insert_mul(current_exp, total_exp, input_action)
-        
-        # final result 
-        if event_type == 'key':
-            index = current_exp.index(_action)
-            current_exp = current_exp[:index]
-        
+        current_exp, total_exp = self.insert_mul(current_exp, total_exp, input_action) 
 
         exp = ''
         if parantes_flag:
             exp = total_exp
         elif input_action == ')' and (total_exp[-1] == ')' or total_exp[-1].isdigit()):
             exp = total_exp + input_action
-        elif self.action_mode > -1 and total_exp != '' and total_exp[-1] != '(' and current_exp == '0':
+        elif total_exp != '' and total_exp[-1] != '(' and current_exp == '0':
             exp = total_exp + input_action
         elif self.action_mode == 2:
             exp = total_exp + input_action + current_exp
@@ -373,18 +383,16 @@ class Calculator:
 
         return exp
 
-
     def on_click_action(self, event):
         # this method for add a action to expresion
         # action is operator or function 
         exp = self.on_action(
-                        event.widget['text'].strip(),
-                        self.current_exp.get().strip(),
-                        self.total_exp.cget('text').strip(),'mouse') 
+                        event.widget['text'],
+                        self.current_exp.get(),
+                        self.total_exp.cget('text'),'mouse') 
                         
         self.total_exp['text'] = exp
-        self.current_exp.delete(0, END) 
-        self.current_exp.insert(0,'0') 
+        self.current_exp.set('0') 
         
     func_counter = 0
     def nested_functions(self,current_exp,total_exp,action,_input): 
@@ -442,8 +450,16 @@ class Calculator:
 
     def on_press_equal(self, event): 
         current_exp = self.current_exp.get()
-        current_exp = '' if current_exp == '0' else current_exp
-        total_exp = self.total_exp.cget('text') + current_exp
+        total_exp   = self.total_exp.cget('text')
+        
+        if current_exp == '0' and total_exp == '': 
+            return None
+        
+        elif total_exp != '' and total_exp[-1] in (string.digits+')'):
+            # fix problem added digit from current to end total when hasn't input action
+            current_exp = ''
+
+        total_exp   += current_exp
         
         # added parantes 
         if self.parantes_counter > 0:
@@ -455,91 +471,125 @@ class Calculator:
                 self.action_mode = 0 
         # 
         final_exp = total_exp
-        total_exp = self.actions_converter(total_exp)
-        self.current_exp.delete(0, END)
+        total_exp = self.actions_converter(total_exp) 
+        self.current_exp.set('')
         self.total_exp.config(text='')
         try: 
             result = eval(total_exp) 
-            self.current_exp.insert(0, result) 
+            self.current_exp.set(result) 
             # save in history 
             dt_now = datetime.now().strftime(f"%Y-%m-%d %H:%M:%S")
             self.history_db.insert_exppression(final_exp, result, dt_now)
             if self.flag_history == 1:
                 self.add_history(final_exp, result,dt_now)
-        except:
-            self.current_exp.insert(0, '0')
+        except: 
+            self.current_exp.set('0')
         finally:
             self.parantes_counter = 0
             self.action_mode = 0
             self.prev_action = '' 
             self.operator_list = [] 
 
-    # color_buttons is history for colors of buttons
-    color_buttons = []
+    # history of keys pressed 
+    # for return the buttons to default color
+    key_history = [] 
     def on_key_press(self, event): 
-        try:
-            # if event type is key run timer for set default color
-            btn = event.char
-            btn = 'x^y' if btn == '^' else btn 
-            self.color_buttons.append([btn, self.obj_buttons[btn]['bg'], self.obj_buttons[btn]['fg']])
-            if btn in '=+-÷×':
-                self.obj_buttons[btn]['bg'] = "#15b"
-                self.obj_buttons[btn]['fg'] = "#fff"
-            else:
-                self.obj_buttons[btn]['bg'] = "#dfdfdf"
+        try: 
+            if event.keycode == 16 or (event.char not in '+-*/%^.()=' and event.char in string.punctuation): 
+                # exited if pressed shift key
+                # exited if key is symbol
+                return None 
 
-            def countDown():
-                # for _ in range(3):
-                sleep(0.2)
-                btn = self.color_buttons.pop(0)
-                self.obj_buttons[btn[0]]['bg'] = btn[1]
-                self.obj_buttons[btn[0]]['fg'] = btn[2]
+            keyChar = event.char
+            match event.char:
+                case '*':
+                            keyChar = '×'
+                case '/':
+                            keyChar = '÷'
+                case '%':
+                            keyChar = 'mod' 
+                case '^':
+                            keyChar = 'x^y' 
+            match event.keysym:
+                case 'BackSpace':
+                            keyChar = 'Del'
+                            self.delete(event)
+                case 'Escape':
+                            self.clear(event) 
+                            keyChar = 'C'
+                case 'Delete':
+                            self.clear_entry(event) 
+                            keyChar = 'CE'
+                case 'Return':
+                            self.on_press_equal(event)
+                            keyChar = '='
+                case 'equal':
+                            self.on_press_equal(event) 
+
+            self.key_history.append(keyChar)
+            if keyChar in '=+-÷×' or keyChar in ['mod','x^y']:
+                self.obj_buttons[keyChar]['bg'] = "#15b"
+                self.obj_buttons[keyChar]['fg'] = "#fff"
+            else:
+                self.obj_buttons[keyChar]['bg'] = "#dfdfdf"
+
+            # run timer after press key for set default color 
+            def countDown(): 
+                sleep(0.1)
+                keyChar = self.key_history.pop(0)
+                if self.obj_buttons.get(keyChar) != None:
+                    self.obj_buttons.get(keyChar)['bg'] = '#fff' if keyChar.isdigit() else '#ffd'
+                    self.obj_buttons.get(keyChar)['fg'] = '#000' 
             countDown_thread = Thread(target=countDown)
             countDown_thread.start()
         except:
-            pass
+            pass 
 
+    
     def on_key_release(self, event):
-        # if Key Pressed and if key is alpha then removed and number inserted 
+        # after key press this method checked key if invalid not insert in current_exp;
+        
         try: 
+            # key validation
+            if event.keycode in [8,13,16,27,32,46] or event.char.isalpha() or (event.char not in '+-*/%^.()' and event.char in string.punctuation):
+                # exited if Key is ENTER,SHIFT,ESC,BACKSPACE,DELETE,SPACE
+                # exited if key is SYMBOL
+                # exited if key is ALPHABET Or LETTER
+                return None 
+
+            inputChar = event.char 
             current_exp = self.current_exp.get() 
-            total_exp = self.total_exp.cget('text')
-            if event.char in '+-*/%^()':
-                exp = self.on_action(event.char,current_exp,self.total_exp.cget('text'),'key')
-                self.total_exp['text'] = exp
-                self.current_exp.delete(0, END)
-                self.current_exp.insert('0', 0) 
-                self.prev_action = event.widget['text'].strip()
+            total_exp = self.total_exp.cget('text') 
+            
+            if inputChar in '+-*/%^()': 
+                match inputChar:
+                    case '*':   # *
+                                inputChar = '×' 
+                    case '/':   # /
+                                inputChar = '÷'
+                    case '%':    # %
+                                inputChar = 'mod' 
+                exp = self.on_action(inputChar, current_exp, total_exp, 'key')
+                self.total_exp['text'] = exp if exp != '0' else ''
+                self.current_exp.set('0')
+                self.prev_action = inputChar
                 self.prev_action_mode = self.action_mode
                 if self.action_mode == 2:
-                    self.func_counter += 1   
-            elif event.char.isalpha() or (event.char not in '+-*/%^.()' and event.char in string.punctuation):
-                # limited user for write only digits or operators 
-                # by index can deleted letter one or more   ex: aaaaaaaaaaaa
-                index = current_exp.index(event.char)
-                current_exp = current_exp[:index] 
-                self.current_exp.delete(0, END)
-                self.current_exp.insert(END, current_exp) 
-            elif event.char.isdigit() :
-                if current_exp[0] == '0' and '.' not in current_exp:
-                    self.current_exp.delete(0, END) 
-                    self.current_exp.insert(0, event.char)
-            elif event.char == '.':
-                if current_exp.count('.')>1:  
-                    index = current_exp.index('.',2) 
-                    current_exp = current_exp[:index]
-                    self.current_exp.delete(0, END)
-                    self.current_exp.insert(0, current_exp) 
-            elif current_exp == '':
-                self.current_exp.insert(0, '0') 
-            
+                    self.func_counter += 1
+            elif inputChar.isdigit():
+                if current_exp == '0':
+                    self.current_exp.set(inputChar)
+                else:
+                    self.current_exp.set(current_exp+inputChar)
+            elif current_exp.count('.') == 0:
+                self.current_exp.set(current_exp+inputChar)
+                
             
         except:
             pass
 
-    def clear(self, event):
-        self.current_exp.delete(0, END)
-        self.current_exp.insert(END,'0')
+    def clear(self, event): 
+        self.current_exp.set('0')
         self.total_exp.config(text='') 
         # values
         self.parantes_counter = 0
@@ -549,14 +599,11 @@ class Calculator:
         self._actions = []
 
     def clear_entry(self, event):
-        self.current_exp.delete(0, END)
-        self.current_exp.insert(END,'0')
+        self.current_exp.set('0') 
 
-    def delete(self, event):
-        exp = self.current_exp.get()
-        self.current_exp.delete(0, END) 
-        result = exp[:len(exp)-1] 
-        self.current_exp.insert(len(exp)-1, result if result != '' else '0')
+    def delete(self, event): 
+        exp = self.current_exp.get()[:-1] 
+        self.current_exp.set(exp if exp != '' else '0')
     
     def run(self):
         self.mainScreen.mainloop()
